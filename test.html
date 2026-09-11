@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Face Attendance System</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #172033;
+            min-height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: #111827;
+            color: white;
+            padding: clamp(16px, 3vw, 24px) 16px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin-bottom: 6px;
+            font-size: clamp(22px, 4vw, 32px);
+            line-height: 1.2;
+        }
+
+        header p {
+            color: #cbd5e1;
+            font-size: clamp(12px, 2vw, 16px);
+            line-height: 1.4;
+        }
+
+        .container {
+            width: min(1100px, 100%);
+            margin: clamp(16px, 4vw, 30px) auto;
+            padding: 0 clamp(12px, 3vw, 20px);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+            gap: clamp(16px, 3vw, 25px);
+            align-items: start;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: clamp(14px, 2.5vw, 20px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            min-width: 0;
+        }
+
+        .card h2 {
+            font-size: clamp(19px, 2.5vw, 24px);
+            line-height: 1.25;
+        }
+
+        .camera-box {
+            position: relative;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .camera-status {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            max-width: calc(100% - 24px);
+            background: rgba(0, 0, 0, 0.65);
+            color: white;
+            padding: 7px 11px;
+            border-radius: 20px;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            padding: 12px 16px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            min-height: 44px;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #startBtn {
+            background: #2563eb;
+            color: white;
+        }
+
+        #stopBtn {
+            background: #dc2626;
+            color: white;
+        }
+
+        #refreshBtn {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 18px;
+            padding: clamp(15px, 2.5vw, 20px);
+            border-radius: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            min-height: 160px;
+            overflow-wrap: anywhere;
+        }
+
+        .result h2 {
+            margin-bottom: 12px;
+            font-size: clamp(19px, 2.5vw, 24px);
+        }
+
+        .success {
+            border: 2px solid #16a34a;
+            background: #f0fdf4;
+        }
+
+        .already {
+            border: 2px solid #f59e0b;
+            background: #fffbeb;
+        }
+
+        .not-found {
+            border: 2px solid #dc2626;
+            background: #fef2f2;
+        }
+
+        .worker-name {
+            font-size: clamp(23px, 4vw, 28px);
+            font-weight: bold;
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .worker-id {
+            font-size: clamp(14px, 2vw, 17px);
+            color: #475569;
+            overflow-wrap: anywhere;
+        }
+
+        .message {
+            font-size: clamp(15px, 2.5vw, 18px);
+            font-weight: bold;
+            margin-top: 10px;
+            overflow-wrap: anywhere;
+        }
+
+        .confidence {
+            margin-top: 8px;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .connection {
+            margin-top: 13px;
+            font-size: 14px;
+            color: #64748b;
+            overflow-wrap: anywhere;
+        }
+
+        .attendance-list {
+            margin-top: 18px;
+        }
+
+        .attendance-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+            overflow-wrap: anywhere;
+        }
+
+        .attendance-item:last-child {
+            border-bottom: none;
+        }
+
+        .attendance-item strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .empty {
+            color: #64748b;
+            padding: 15px 0;
+            line-height: 1.5;
+        }
+
+        .worker-list {
+            margin-top: 16px;
+            max-height: 420px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .registered-worker {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f8fafc;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .registered-worker strong,
+        .registered-worker span {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .registered-worker span {
+            text-align: right;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .worker-list {
+                max-height: 300px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 15px 12px;
+            }
+
+            .container {
+                margin: 12px auto 20px;
+                padding: 0 10px;
+            }
+
+            .grid {
+                gap: 12px;
+            }
+
+            .card {
+                border-radius: 12px;
+                padding: 13px;
+            }
+
+            .camera-box {
+                aspect-ratio: 4 / 3;
+                border-radius: 10px;
+            }
+
+            .controls {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .controls button,
+            #refreshBtn {
+                width: 100%;
+            }
+
+            .result {
+                min-height: 130px;
+                padding: 14px;
+            }
+
+            .attendance-list {
+                margin-top: 12px;
+            }
+
+            .registered-worker {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .registered-worker span {
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 380px) {
+            header h1 {
+                font-size: 20px;
+            }
+
+            header p {
+                font-size: 11px;
+            }
+
+            .camera-status {
+                top: 8px;
+                left: 8px;
+                padding: 6px 9px;
+                font-size: 11px;
+            }
+
+            button {
+                font-size: 14px;
+            }
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            button {
+                min-height: 48px;
+            }
+        }
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Face Recognition Attendance</h1>
+    <p>Browser Camera → FastAPI → Face Matching → MongoDB</p>
+</header>
+
+<div class="container">
+
+    <div class="grid">
+
+        <!-- CAMERA -->
+        <div class="card">
+
+            <h2>Camera</h2>
+
+            <br>
+
+            <div class="camera-box">
+
+                <video id="video" autoplay muted playsinline></video>
+
+                <div class="camera-status" id="cameraStatus">
+                    Camera stopped
+                </div>
+
+            </div>
+
+            <canvas id="canvas"></canvas>
+
+            <div class="controls">
+
+                <button id="startBtn">
+                    Open Camera & Detect
+                </button>
+
+                <button id="stopBtn" disabled>
+                    Stop Camera
+                </button>
+
+            </div>
+
+            <div class="connection">
+                WebSocket:
+                <span id="connectionStatus">
+                    Disconnected
+                </span>
+            </div>
+
+            <!-- RESULT -->
+
+            <div class="result" id="result">
+
+                <h2>Recognition Result</h2>
+
+                <p>
+                    Start the camera and look at the camera.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- RIGHT SIDE -->
+        <div>
+
+            <!-- REGISTERED WORKERS -->
+
+            <div class="card">
+
+                <h2>Registered Workers</h2>
+
+                <div
+                    class="worker-list"
+                    id="workerList"
+                >
+                    <div class="empty">
+                        Loading workers...
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- TODAY ATTENDANCE -->
+
+            <div class="card attendance-list">
+
+                <h2>Today's Attendance</h2>
+
+                <br>
+
+                <button id="refreshBtn">
+                    Refresh Attendance
+                </button>
+
+                <div id="attendanceList">
+
+                    <div class="empty">
+                        Loading...
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /*
+    ============================================================
+    CHANGE THESE URLS FOR DEPLOYMENT
+    ============================================================
+    */
+
+    // LOCAL FASTAPI
+    const API_URL = "https://coal-face.onrender.com";
+
+const WS_URL = "wss://coal-face.onrender.com/ws/attendance";
+
+
+    /*
+    ============================================================
+    ELEMENTS
+    ============================================================
+    */
+
+    const video =
+        document.getElementById("video");
+
+    const canvas =
+        document.getElementById("canvas");
+
+    const startBtn =
+        document.getElementById("startBtn");
+
+    const stopBtn =
+        document.getElementById("stopBtn");
+
+    const refreshBtn =
+        document.getElementById("refreshBtn");
+
+    const result =
+        document.getElementById("result");
+
+    const cameraStatus =
+        document.getElementById("cameraStatus");
+
+    const connectionStatus =
+        document.getElementById("connectionStatus");
+
+    const workerList =
+        document.getElementById("workerList");
+
+    const attendanceList =
+        document.getElementById("attendanceList");
+
+
+    /*
+    ============================================================
+    VARIABLES
+    ============================================================
+    */
+
+    let stream = null;
+
+    let websocket = null;
+
+    let detectionInterval = null;
+
+    let cameraRunning = false;
+
+    let lastSent = 0;
+
+    // Don't send frames too quickly
+    const SEND_INTERVAL = 500;
+
+
+    /*
+    ============================================================
+    SOUND
+    ============================================================
+    */
+
+    function playSuccessSound() {
+
+        try {
+
+            const audioContext =
+                new (
+                    window.AudioContext ||
+                    window.webkitAudioContext
+                )();
+
+            const oscillator =
+                audioContext.createOscillator();
+
+            const gain =
+                audioContext.createGain();
+
+            oscillator.frequency.value = 800;
+
+            oscillator.type = "sine";
+
+            gain.gain.value = 0.15;
+
+            oscillator.connect(gain);
+
+            gain.connect(
+                audioContext.destination
+            );
+
+            oscillator.start();
+
+            setTimeout(() => {
+
+                oscillator.stop();
+
+                audioContext.close();
+
+            }, 200);
+
+        } catch (error) {
+
+            console.log(
+                "Sound error:",
+                error
+            );
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    START CAMERA
+    ============================================================
+    */
+
+    async function startCamera() {
+
+        try {
+
+            result.className = "result";
+
+            result.innerHTML = `
+                <h2>Recognition Result</h2>
+                <p>Starting camera...</p>
+            `;
+
+
+            /*
+            Ask browser for camera
+            */
+
+            stream =
+                await navigator.mediaDevices
+                    .getUserMedia({
+
+                        video: {
+                            width: {
+                                ideal: 640,
+                                max: 1280
+                            },
+
+                            height: {
+                                ideal: 480,
+                                max: 720
+                            },
+
+                            facingMode: {
+                                ideal: "user"
+                            }
+
+                        },
+
+                        audio: false
+
+                    });
+
+
+            video.srcObject = stream;
+
+            cameraRunning = true;
+
+            cameraStatus.textContent =
+                "Camera running";
+
+
+            startBtn.disabled = true;
+
+            stopBtn.disabled = false;
+
+
+            /*
+            Connect WebSocket
+            */
+
+            connectWebSocket();
+
+
+            /*
+            Start sending frames
+            */
+
+            detectionInterval =
+                setInterval(
+                    captureAndSend,
+                    SEND_INTERVAL
+                );
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            result.className =
+                "result not-found";
+
+            result.innerHTML = `
+                <h2>Camera Error</h2>
+
+                <p>
+                    Could not access the camera.
+                </p>
+
+                <br>
+
+                <p>
+                    Please allow camera permission
+                    in your browser.
+                </p>
+            `;
+
+            cameraStatus.textContent =
+                "Camera permission denied";
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    STOP CAMERA
+    ============================================================
+    */
+
+    function stopCamera() {
+
+        cameraRunning = false;
+
+
+        if (detectionInterval) {
+
+            clearInterval(
+                detectionInterval
+            );
+
+            detectionInterval = null;
+
+        }
+
+
+        if (stream) {
+
+            stream
+                .getTracks()
+                .forEach(track => {
+
+                    track.stop();
+
+                });
+
+            stream = null;
+
+        }
+
+
+        video.srcObject = null;
+
+
+        if (websocket) {
+
+            websocket.close();
+
+            websocket = null;
+
+        }
+
+
+        cameraStatus.textContent =
+            "Camera stopped";
+
+        connectionStatus.textContent =
+            "Disconnected";
+
+
+        startBtn.disabled = false;
+
+        stopBtn.disabled = true;
+
+    }
+
+
+    /*
+    ============================================================
+    WEBSOCKET
+    ============================================================
+    */
+
+    function connectWebSocket() {
+
+        websocket =
+            new WebSocket(WS_URL);
+
+
+        websocket.binaryType =
+            "arraybuffer";
+
+
+        websocket.onopen = function () {
+
+            console.log(
+                "WebSocket connected"
+            );
+
+            connectionStatus.textContent =
+                "Connected";
+
+        };
+
+
+        websocket.onmessage = function (event) {
+
+            try {
+
+                const data =
+                    JSON.parse(
+                        event.data
+                    );
+
+                console.log(
+                    "Backend:",
+                    data
+                );
+
+
+                /*
+                No face
+                */
+
+                if (
+                    data.status ===
+                    "not_found"
+                ) {
+
+                    showNotFound();
+
+                    return;
+
+                }
+
+
+                /*
+                Recognition results
+                */
+
+                if (
+                    data.results &&
+                    data.results.length > 0
+                ) {
+
+                    handleResults(
+                        data.results
+                    );
+
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Message error:",
+                    error
+                );
+
+            }
+
+        };
+
+
+        websocket.onerror = function (error) {
+
+            console.error(
+                "WebSocket error:",
+                error
+            );
+
+            connectionStatus.textContent =
+                "Connection error";
+
+        };
+
+
+        websocket.onclose = function () {
+
+            console.log(
+                "WebSocket disconnected"
+            );
+
+            connectionStatus.textContent =
+                "Disconnected";
+
+        };
+
+    }
+
+
+    /*
+    ============================================================
+    CAPTURE FRAME
+    ============================================================
+    */
+
+    function captureAndSend() {
+
+        if (!cameraRunning) {
+            return;
+        }
+
+        if (!websocket) {
+            return;
+        }
+
+        if (
+            websocket.readyState !==
+            WebSocket.OPEN
+        ) {
+            return;
+        }
+
+        if (
+            video.readyState <
+            video.HAVE_CURRENT_DATA
+        ) {
+            return;
+        }
+
+
+        const now =
+            Date.now();
+
+
+        if (
+            now - lastSent <
+            SEND_INTERVAL
+        ) {
+            return;
+        }
+
+
+        lastSent = now;
+
+
+        /*
+        Use smaller image
+        */
+
+        const width = 640;
+
+        const height =
+            video.videoHeight /
+            video.videoWidth *
+            width;
+
+
+        canvas.width = width;
+
+        canvas.height = height;
+
+
+        const context =
+            canvas.getContext("2d");
+
+
+        /*
+        Draw camera frame
+        */
+
+        context.drawImage(
+            video,
+            0,
+            0,
+            width,
+            height
+        );
+
+
+        /*
+        Convert to JPEG
+        */
+
+        canvas.toBlob(
+            function (blob) {
+
+                if (
+                    blob &&
+                    websocket &&
+                    websocket.readyState ===
+                    WebSocket.OPEN
+                ) {
+
+                    websocket.send(
+                        blob
+                    );
+
+                }
+
+            },
+            "image/jpeg",
+            0.7
+        );
+
+    }
+
+
+    /*
+    ============================================================
+    HANDLE RECOGNITION
+    ============================================================
+    */
+
+    function handleResults(results) {
+
+        /*
+        Find first successful/known result
+        */
+
+        const knownWorker =
+            results.find(
+                item =>
+                    item.status ===
+                    "success" ||
+                    item.status ===
+                    "already_marked"
+            );
+
+
+        if (knownWorker) {
+
+            showWorker(
+                knownWorker
+            );
+
+            /*
+            Sound only when attendance
+            is newly marked
+            */
+
+            if (
+                knownWorker.status ===
+                "success"
+            ) {
+
+                playSuccessSound();
+
+                /*
+                Refresh today's attendance
+                */
+
+                loadTodayAttendance();
+
+            }
+
+            return;
+
+        }
+
+
+        showNotFound();
+
+    }
+
+
+    /*
+    ============================================================
+    SHOW WORKER
+    ============================================================
+    */
+
+    function showWorker(worker) {
+
+        if (
+            worker.status ===
+            "success"
+        ) {
+
+            result.className =
+                "result success";
+
+        } else {
+
+            result.className =
+                "result already";
+
+        }
+
+
+        const confidence =
+            worker.confidence !== undefined
+                ? (
+                    worker.confidence *
+                    100
+                ).toFixed(1)
+                : "N/A";
+
+
+        result.innerHTML = `
+
+            <h2>
+                ${
+                    worker.status ===
+                    "success"
+                    ? "✓ Attendance Done"
+                    : "✓ Already Marked"
+                }
+            </h2>
+
+            <div class="worker-name">
+                ${escapeHTML(
+                    worker.name
+                )}
+            </div>
+
+            <div class="worker-id">
+                Worker ID:
+                <strong>
+                    ${escapeHTML(
+                        worker.worker_id
+                    )}
+                </strong>
+            </div>
+
+            <div class="message">
+                ${escapeHTML(
+                    worker.message
+                )}
+            </div>
+
+            <div class="confidence">
+                Match confidence:
+                ${confidence}%
+            </div>
+
+        `;
+
+    }
+
+
+    /*
+    ============================================================
+    SHOW NOT FOUND
+    ============================================================
+    */
+
+    function showNotFound() {
+
+        result.className =
+            "result not-found";
+
+        result.innerHTML = `
+
+            <h2>
+                ✗ No Worker Found
+            </h2>
+
+            <p>
+                No registered worker
+                was recognized.
+            </p>
+
+        `;
+
+    }
+
+
+    /*
+    ============================================================
+    LOAD REGISTERED WORKERS
+    ============================================================
+    */
+
+    async function loadWorkers() {
+
+        try {
+
+            const response =
+                await fetch(
+                    API_URL +
+                    "/workers"
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Failed to load workers"
+                );
+
+            }
+
+
+            const workers =
+                await response.json();
+
+
+            if (
+                !workers ||
+                workers.length === 0
+            ) {
+
+                workerList.innerHTML = `
+                    <div class="empty">
+                        No workers registered.
+                    </div>
+                `;
+
+                return;
+
+            }
+
+
+            workerList.innerHTML =
+                workers
+                    .map(worker => `
+
+                        <div class="registered-worker">
+
+                            <strong>
+                                ${escapeHTML(
+                                    worker.name
+                                )}
+                            </strong>
+
+                            <span>
+                                ${escapeHTML(
+                                    worker.worker_id
+                                )}
+                            </span>
+
+                        </div>
+
+                    `)
+                    .join("");
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            workerList.innerHTML = `
+                <div class="empty">
+                    Could not load workers.
+                </div>
+            `;
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    TODAY ATTENDANCE
+    ============================================================
+    */
+
+    async function loadTodayAttendance() {
+
+        try {
+
+            const response =
+                await fetch(
+                    API_URL +
+                    "/attendance/today"
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Failed to load attendance"
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            const records =
+                data.attendance || [];
+
+
+            if (records.length === 0) {
+
+                attendanceList.innerHTML = `
+                    <div class="empty">
+                        No attendance yet.
+                    </div>
+                `;
+
+                return;
+
+            }
+
+
+            attendanceList.innerHTML =
+                records
+                    .sort(
+                        (
+                            a,
+                            b
+                        ) =>
+                            new Date(
+                                b.check_in
+                            ) -
+                            new Date(
+                                a.check_in
+                            )
+                    )
+                    .map(record => {
+
+                        let time = "";
+
+                        if (
+                            record.check_in
+                        ) {
+
+                            time =
+                                new Date(
+                                    record.check_in
+                                )
+                                .toLocaleTimeString();
+
+                        }
+
+
+                        return `
+
+                            <div
+                                class="attendance-item"
+                            >
+
+                                <strong>
+                                    ${escapeHTML(
+                                        record.name
+                                    )}
+                                </strong>
+
+                                <div>
+                                    ID:
+                                    ${escapeHTML(
+                                        record.worker_id
+                                    )}
+                                </div>
+
+                                <div>
+                                    Check-in:
+                                    ${time}
+                                </div>
+
+                            </div>
+
+                        `;
+
+                    })
+                    .join("");
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            attendanceList.innerHTML = `
+                <div class="empty">
+                    Could not load attendance.
+                </div>
+            `;
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    ESCAPE HTML
+    ============================================================
+    */
+
+    function escapeHTML(value) {
+
+        if (
+            value === null ||
+            value === undefined
+        ) {
+
+            return "";
+
+        }
+
+        return String(value)
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+            .replace(
+                /</g,
+                "&lt;"
+            )
+            .replace(
+                />/g,
+                "&gt;"
+            )
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#039;"
+            );
+
+    }
+
+
+    /*
+    ============================================================
+    BUTTONS
+    ============================================================
+    */
+
+    startBtn.addEventListener(
+        "click",
+        startCamera
+    );
+
+
+    stopBtn.addEventListener(
+        "click",
+        stopCamera
+    );
+
+
+    refreshBtn.addEventListener(
+        "click",
+        loadTodayAttendance
+    );
+
+
+    /*
+    ============================================================
+    INITIAL LOAD
+    ============================================================
+    */
+
+    loadWorkers();
+
+    loadTodayAttendance();
+
+
+    /*
+    ============================================================
+    CLEANUP
+    ============================================================
+    */
+
+    window.addEventListener(
+        "beforeunload",
+        stopCamera
+    );
+
+</script>
+
+</body>
+</html>
